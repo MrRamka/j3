@@ -32,7 +32,7 @@ public class DataReader {
         this.DATA_PATH = dataPath;
         FileInputStream fileInputStream = new FileInputStream(new File(dataPath));
         bufferedReader = new BufferedReader(new InputStreamReader(fileInputStream));
-        initialRead();
+//        initialRead();
 
     }
 
