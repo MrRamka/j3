@@ -12,9 +12,15 @@ public class Server {
     private static final String CONTENT_HEADER = "Content-Length: ";
     private static final String IP = "/127.0.0.1";
     private static final String FILE_PATH = "D:\\MAVEN_PROJECTS\\j3\\src\\main\\java\\serverHm\\users.csv";
+    private static final String HTTP = "HTTP/1.1";
+    private static final String CODE_200 = "200 OK";
+    private static final String CODE_400 = "404 Not found";
+    private static final String CODE_404 = "405 Method Not Allowed";
+    private static final String CODE_500 = "500 Internal Server Error";
+    private static final String CODE_505 = "505 HTTP Version Not Supported";
+
 
     public static void main(String[] args) {
-        String path = "";
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
             System.out.println("Server started!");
             while (true) {
@@ -25,47 +31,70 @@ public class Server {
                 String inputLine = input.readLine();
                 System.out.println(inputLine);
                 String[] firstLineData = inputLine.split(" ");
-                if (!firstLineData[1].equals("/")){
-                    isNormalPath = false;
-                }
+                boolean isGet = inputLine.startsWith("GET");
+                boolean isHTTP = true;
                 boolean isPost = inputLine.startsWith("POST");
                 int contentLength = 0;
+                if (!firstLineData[1].equals("/")) {
+                    isNormalPath = false;
+                }
+                if (!firstLineData[2].equals(HTTP)) {
+                    isHTTP = false;
+                }
 
                 while (!(inputLine = input.readLine()).equals("")) {
                     if (isPost && inputLine.startsWith(CONTENT_HEADER)) {
                         contentLength = Integer.parseInt(inputLine.substring(CONTENT_HEADER.length()));
                     }
                 }
+
                 StringBuilder body = new StringBuilder();
+
                 if (isPost) {
                     int c;
                     for (int i = 0; i < contentLength; i++) {
                         c = input.read();
                         body.append((char) c);
                     }
+
                     String[] data = body.toString().split("&");
                     System.out.println(body.toString());
                     String name = data[0].split("=")[1];
                     String date = data[1].split("=")[1];
                     write(name, date);
                 }
-                if (!socket.getInetAddress().toString().equals(IP)){
-                    System.out.println("Test");
+
+                String statusCode = CODE_200;
+
+                if (!isNormalPath) {
+                    statusCode = CODE_400;
+                } else if (!(isGet || isPost)) {
+                    statusCode = CODE_404;
+                } else if (!isHTTP) {
+                    statusCode = CODE_505;
                 }
-                if (!isNormalPath){
-                    output.println("HTTP/1.1 404 Not found");
+                String users = "";
+                try {
+                    users = getUsers();
+                } catch (FileNotFoundException ex) {
+                    statusCode = CODE_500;
+                }
+                if (!statusCode.equals(CODE_200)) {
+                    output.println("HTTP/1.1 " + statusCode);
                     output.println("Content-Type: text/html; charset=utf-8");
                     output.println();
-                    output.println("<h1>Bad request</h1>");
-                }else {
-                    output.println("HTTP/1.1 200 OK");
+                    output.println("<h1>" + statusCode + "</h1>");
+                } else {
+                    output.println("HTTP/1.1 " + statusCode);
                     output.println("Content-Type: text/html; charset=utf-8");
                     output.println();
-                    output.println(getUsers());
+                    output.println(users);
                     output.println(getForm());
+
                 }
                 output.flush();
                 output.close();
+
 
             }
         } catch (IOException ex) {
